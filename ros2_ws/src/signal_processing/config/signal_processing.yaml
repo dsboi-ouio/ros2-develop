@@ -1,0 +1,13 @@
+signal_generator:
+  ros__parameters:
+    amplitude: 1.0
+    signal_frequency_hz: 20.0
+    sample_rate_hz: 1000.0
+    noise_ratio: 0.01
+    random_seed: 42
+
+signal_filter:
+  ros__parameters:
+    sample_rate_hz: 1000.0
+    low_pass_cutoff_hz: 60.0
+    median_window_size: 5

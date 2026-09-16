@@ -15,10 +15,18 @@ find_package(std_msgs REQUIRED)
 add_executable(signal_generator src/signal_generator.cpp)
 ament_target_dependencies(signal_generator rclcpp std_msgs)
 
+add_executable(signal_filter src/signal_filter.cpp)
+target_include_directories(signal_filter PRIVATE include)
+ament_target_dependencies(signal_filter rclcpp std_msgs)
+
 install(
   TARGETS
     signal_generator
+    signal_filter
   DESTINATION lib/${PROJECT_NAME}
 )
 
+install(DIRECTORY include/ DESTINATION include)
+
+ament_export_include_directories(include)
 ament_package()

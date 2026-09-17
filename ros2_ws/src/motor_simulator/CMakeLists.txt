@@ -26,6 +26,7 @@ ament_target_dependencies(torque_source_node rclcpp std_msgs)
 install(TARGETS motor_simulator_node torque_source_node
   DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include)
+install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 install(FILES LICENSE DESTINATION share/${PROJECT_NAME})
 
 ament_package()

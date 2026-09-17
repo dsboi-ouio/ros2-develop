@@ -1,0 +1,19 @@
+motor_simulator:
+  ros__parameters:
+    inertia: 0.01
+    damping: 0.1
+    load_torque: 0.0
+    initial_position_rad: 0.0
+    initial_velocity_rad_s: 0.0
+    simulation_frequency_hz: 1000.0
+    publish_frequency_hz: 100.0
+    joint_name: motor_shaft
+
+torque_source:
+  ros__parameters:
+    publish_frequency_hz: 100.0
+    mode: step
+    amplitude: 0.2
+    offset: 0.0
+    step_time_s: 0.5
+    signal_frequency_hz: 0.5

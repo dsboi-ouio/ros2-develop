@@ -29,7 +29,7 @@ ament_target_dependencies(motor_csv_logger rclcpp sensor_msgs)
 install(TARGETS motor_simulator_node torque_source_node motor_csv_logger
   DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include)
-install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
 install(FILES LICENSE DESTINATION share/${PROJECT_NAME})
 
 ament_package()

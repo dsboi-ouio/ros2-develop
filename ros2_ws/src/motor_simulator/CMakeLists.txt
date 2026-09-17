@@ -23,7 +23,10 @@ ament_target_dependencies(motor_simulator_node rclcpp sensor_msgs std_msgs)
 add_executable(torque_source_node src/torque_source_node.cpp)
 ament_target_dependencies(torque_source_node rclcpp std_msgs)
 
-install(TARGETS motor_simulator_node torque_source_node
+add_executable(motor_csv_logger src/motor_csv_logger.cpp)
+ament_target_dependencies(motor_csv_logger rclcpp sensor_msgs)
+
+install(TARGETS motor_simulator_node torque_source_node motor_csv_logger
   DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})

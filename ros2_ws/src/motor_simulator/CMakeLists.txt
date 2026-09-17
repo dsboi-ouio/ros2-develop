@@ -20,7 +20,10 @@ add_executable(motor_simulator_node src/motor_simulator_node.cpp)
 target_link_libraries(motor_simulator_node motor_model)
 ament_target_dependencies(motor_simulator_node rclcpp sensor_msgs std_msgs)
 
-install(TARGETS motor_simulator_node
+add_executable(torque_source_node src/torque_source_node.cpp)
+ament_target_dependencies(torque_source_node rclcpp std_msgs)
+
+install(TARGETS motor_simulator_node torque_source_node
   DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include)
 install(FILES LICENSE DESTINATION share/${PROJECT_NAME})

@@ -41,8 +41,11 @@ public:
             throw std::invalid_argument("PID dt must be finite and greater than zero");
         }
 
+        const double derivative = initialized_ ? (error - previous_error_) / dt : 0.0;
         integral_ += error * dt;
-        return gains_.kp * error + gains_.ki * integral_;
+        previous_error_ = error;
+        initialized_ = true;
+        return gains_.kp * error + gains_.ki * integral_ + gains_.kd * derivative;
     }
 
     void reset() {

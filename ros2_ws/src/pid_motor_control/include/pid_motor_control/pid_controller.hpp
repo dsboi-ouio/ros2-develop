@@ -26,6 +26,24 @@ public:
         validate_configuration();
     }
 
+    double update(double setpoint, double measurement, double dt) {
+        if (!std::isfinite(setpoint) || !std::isfinite(measurement)) {
+            throw std::invalid_argument("PID inputs must be finite");
+        }
+        return update_error(setpoint - measurement, dt);
+    }
+
+    double update_error(double error, double dt) {
+        if (!std::isfinite(error)) {
+            throw std::invalid_argument("PID error must be finite");
+        }
+        if (!std::isfinite(dt) || dt <= 0.0) {
+            throw std::invalid_argument("PID dt must be finite and greater than zero");
+        }
+
+        return gains_.kp * error;
+    }
+
 private:
     void validate_configuration() const {
         if (!std::isfinite(gains_.kp) || !std::isfinite(gains_.ki) || !std::isfinite(gains_.kd)

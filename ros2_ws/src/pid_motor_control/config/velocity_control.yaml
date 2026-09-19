@@ -1,0 +1,21 @@
+pid_controller:
+  ros__parameters:
+    control_frequency_hz: 1000.0
+    feedback_timeout_s: 0.1
+    torque_limit_nm: 2.0
+    initial_target_velocity_rad_s: 0.0
+    pid:
+      kp: 0.35
+      ki: 2.0
+      kd: 0.0005
+      integral_min: -10.0
+      integral_max: 10.0
+
+reference_generator:
+  ros__parameters:
+    publish_frequency_hz: 100.0
+    signal_type: step
+    amplitude: 8.0
+    offset: 0.0
+    step_time_s: 0.5
+    signal_frequency_hz: 0.2

@@ -27,6 +27,8 @@ install(
 )
 
 install(DIRECTORY include/ DESTINATION include)
+install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
+install(FILES LICENSE DESTINATION share/${PROJECT_NAME})
 
 ament_export_include_directories(include)
 ament_package()

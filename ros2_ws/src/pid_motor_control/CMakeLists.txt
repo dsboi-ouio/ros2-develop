@@ -9,6 +9,17 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+
+add_executable(pid_controller_node src/pid_controller_node.cpp)
+target_include_directories(pid_controller_node PRIVATE include)
+ament_target_dependencies(pid_controller_node rclcpp)
+
+install(
+  TARGETS
+    pid_controller_node
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 install(DIRECTORY include/ DESTINATION include)
 

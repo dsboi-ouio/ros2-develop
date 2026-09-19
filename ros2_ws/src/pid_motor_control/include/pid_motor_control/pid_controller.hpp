@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
@@ -42,10 +43,20 @@ public:
         }
 
         const double derivative = initialized_ ? (error - previous_error_) / dt : 0.0;
-        integral_ += error * dt;
+        const double candidate_integral =
+            std::clamp(integral_ + error * dt, limits_.integral_min, limits_.integral_max);
+        const double candidate_output =
+            gains_.kp * error + gains_.ki * candidate_integral + gains_.kd * derivative;
+
+        const bool pushes_upper_limit = candidate_output > limits_.output_max && error > 0.0;
+        const bool pushes_lower_limit = candidate_output < limits_.output_min && error < 0.0;
+        if (!pushes_upper_limit && !pushes_lower_limit) {
+            integral_ = candidate_integral;
+        }
+
         previous_error_ = error;
         initialized_ = true;
-        return gains_.kp * error + gains_.ki * integral_ + gains_.kd * derivative;
+        return std::clamp(candidate_output, limits_.output_min, limits_.output_max);
     }
 
     void reset() {

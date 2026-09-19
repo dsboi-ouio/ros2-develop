@@ -41,8 +41,18 @@ public:
             throw std::invalid_argument("PID dt must be finite and greater than zero");
         }
 
-        return gains_.kp * error;
+        integral_ += error * dt;
+        return gains_.kp * error + gains_.ki * integral_;
     }
+
+    void reset() {
+        integral_ = 0.0;
+        previous_error_ = 0.0;
+        initialized_ = false;
+    }
+
+    double integral() const noexcept { return integral_; }
+    bool initialized() const noexcept { return initialized_; }
 
 private:
     void validate_configuration() const {

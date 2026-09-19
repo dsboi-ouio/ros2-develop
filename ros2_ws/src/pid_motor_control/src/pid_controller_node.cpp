@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 #include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/float64.hpp"
 
 #include "pid_motor_control/pid_controller.hpp"
 
@@ -39,6 +40,24 @@ public:
                 declare_parameter<double>("pid.integral_min", -10.0),
                 declare_parameter<double>("pid.integral_max", 10.0)});
 
+        velocity_subscription_ = create_subscription<std_msgs::msg::Float64>(
+            "velocity", 10, [this](const std_msgs::msg::Float64::SharedPtr message) {
+                if (!std::isfinite(message->data)) {
+                    RCLCPP_WARN_THROTTLE(
+                        get_logger(), *get_clock(), 1000, "Ignoring non-finite velocity feedback");
+                    return;
+                }
+                current_velocity_rad_s_ = message->data;
+                velocity_received_ = true;
+                last_velocity_time_ = std::chrono::steady_clock::now();
+            });
+        target_subscription_ = create_subscription<std_msgs::msg::Float64>(
+            "target_velocity", 10, [this](const std_msgs::msg::Float64::SharedPtr message) {
+                if (std::isfinite(message->data)) {
+                    target_velocity_rad_s_ = message->data;
+                }
+            });
+
         RCLCPP_INFO(
             get_logger(), "Velocity PID ready: rate=%.1f Hz, torque_limit=%.2f Nm",
             control_frequency_hz, torque_limit_nm);
@@ -47,9 +66,14 @@ public:
 private:
     double dt_{0.001};
     double feedback_timeout_s_{0.1};
+    double current_velocity_rad_s_{0.0};
     double target_velocity_rad_s_{0.0};
+    bool velocity_received_{false};
+    std::chrono::steady_clock::time_point last_velocity_time_;
 
   std::unique_ptr<PidController> pid_;
+    rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr velocity_subscription_;
+    rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr target_subscription_;
 };
 
 }

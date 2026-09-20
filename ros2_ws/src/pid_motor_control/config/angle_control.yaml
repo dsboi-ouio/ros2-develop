@@ -1,0 +1,19 @@
+angle_pid_controller:
+  ros__parameters:
+    control_frequency_hz: 1000.0
+    feedback_timeout_s: 0.1
+    velocity_limit_rad_s: 4.0
+    torque_limit_nm: 2.0
+    initial_target_position_rad: 1.5707963267948966
+    position_pid:
+      kp: 1.5
+      ki: 0.05
+      kd: 0.05
+      integral_min: -1.0
+      integral_max: 1.0
+    velocity_pid:
+      kp: 0.35
+      ki: 2.0
+      kd: 0.0005
+      integral_min: -10.0
+      integral_max: 10.0

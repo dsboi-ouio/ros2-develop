@@ -17,12 +17,15 @@ public:
         : Node("angle_pid_controller") {
         const double control_frequency_hz =
             declare_parameter<double>("control_frequency_hz", 1000.0);
+        feedback_timeout_s_ = declare_parameter<double>("feedback_timeout_s", 0.1);
         const double velocity_limit_rad_s =
             declare_parameter<double>("velocity_limit_rad_s", 4.0);
         const double torque_limit_nm = declare_parameter<double>("torque_limit_nm", 2.0);
         requested_position_rad_ =
             declare_parameter<double>("initial_target_position_rad", 1.5707963267948966);
+
         if (!std::isfinite(control_frequency_hz) || control_frequency_hz < 500.0
+            || !std::isfinite(feedback_timeout_s_) || feedback_timeout_s_ <= 0.0
             || !std::isfinite(velocity_limit_rad_s) || velocity_limit_rad_s <= 0.0
             || !std::isfinite(torque_limit_nm) || torque_limit_nm <= 0.0
             || !std::isfinite(requested_position_rad_)) {
@@ -57,20 +60,24 @@ public:
 
         position_subscription_ = create_subscription<std_msgs::msg::Float64>(
             "position", 10, [this](const std_msgs::msg::Float64::SharedPtr message) {
-                if (std::isfinite(message->data)) {
-                    current_position_rad_ = message->data;
-                    position_received_ = true;
-                    if (target_pending_) {
-                        plan_target();
-                    }
+                if (!std::isfinite(message->data)) {
+                    return;
+                }
+                current_position_rad_ = message->data;
+                position_received_ = true;
+                last_position_time_ = std::chrono::steady_clock::now();
+                if (target_pending_) {
+                    plan_target();
                 }
             });
         velocity_subscription_ = create_subscription<std_msgs::msg::Float64>(
             "velocity", 10, [this](const std_msgs::msg::Float64::SharedPtr message) {
-                if (std::isfinite(message->data)) {
-                    current_velocity_rad_s_ = message->data;
-                    velocity_received_ = true;
+                if (!std::isfinite(message->data)) {
+                    return;
                 }
+                current_velocity_rad_s_ = message->data;
+                velocity_received_ = true;
+                last_velocity_time_ = std::chrono::steady_clock::now();
             });
         target_subscription_ = create_subscription<std_msgs::msg::Float64>(
             "target_position", 10, [this](const std_msgs::msg::Float64::SharedPtr message) {
@@ -119,16 +126,41 @@ private:
         target_pending_ = false;
         position_pid_->reset();
         velocity_pid_->reset();
-        publish_value(planned_position_publisher_, planned_position_rad_);
         RCLCPP_INFO(
             get_logger(), "Angle target: current=%.3f, requested=%.3f, planned=%.3f",
             current_position_rad_, requested_position_rad_, planned_position_rad_);
     }
 
     void control_step() {
-        if (!position_received_ || !velocity_received_ || target_pending_) {
+        if (!position_received_ || !velocity_received_) {
             return;
         }
+
+        const auto now = std::chrono::steady_clock::now();
+        const double position_age_s =
+            std::chrono::duration<double>(now - last_position_time_).count();
+        const double velocity_age_s =
+            std::chrono::duration<double>(now - last_velocity_time_).count();
+        if (position_age_s > feedback_timeout_s_ || velocity_age_s > feedback_timeout_s_) {
+            publish_value(torque_publisher_, 0.0);
+            publish_value(target_velocity_publisher_, 0.0);
+            if (!feedback_was_stale_) {
+                position_pid_->reset();
+                velocity_pid_->reset();
+                feedback_was_stale_ = true;
+            }
+            RCLCPP_WARN_THROTTLE(
+                get_logger(), *get_clock(), 1000, "Angle feedback is stale; commanding zero torque");
+            return;
+        }
+        feedback_was_stale_ = false;
+
+        if (target_pending_) {
+            publish_value(torque_publisher_, 0.0);
+            publish_value(target_velocity_publisher_, 0.0);
+            return;
+        }
+
         const double target_velocity_rad_s =
             position_pid_->update(planned_position_rad_, current_position_rad_, dt_);
         const double torque_nm =
@@ -139,6 +171,7 @@ private:
     }
 
     double dt_{0.001};
+    double feedback_timeout_s_{0.1};
     double current_position_rad_{0.0};
     double current_velocity_rad_s_{0.0};
     double requested_position_rad_{0.0};
@@ -146,6 +179,10 @@ private:
     bool position_received_{false};
     bool velocity_received_{false};
     bool target_pending_{true};
+    bool feedback_was_stale_{false};
+    std::chrono::steady_clock::time_point last_position_time_;
+    std::chrono::steady_clock::time_point last_velocity_time_;
+
     std::unique_ptr<PidController> position_pid_;
     std::unique_ptr<PidController> velocity_pid_;
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr torque_publisher_;

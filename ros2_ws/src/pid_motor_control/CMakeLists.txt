@@ -16,12 +16,17 @@ add_executable(pid_controller_node src/pid_controller_node.cpp)
 target_include_directories(pid_controller_node PRIVATE include)
 ament_target_dependencies(pid_controller_node rclcpp std_msgs)
 
+add_executable(angle_pid_controller_node src/angle_pid_controller_node.cpp)
+target_include_directories(angle_pid_controller_node PRIVATE include)
+ament_target_dependencies(angle_pid_controller_node rclcpp std_msgs)
+
 add_executable(reference_generator_node src/reference_generator_node.cpp)
 ament_target_dependencies(reference_generator_node rclcpp std_msgs)
 
 install(
   TARGETS
     pid_controller_node
+    angle_pid_controller_node
     reference_generator_node
   DESTINATION lib/${PROJECT_NAME}
 )

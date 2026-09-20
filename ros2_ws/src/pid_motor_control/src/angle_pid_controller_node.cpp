@@ -19,10 +19,12 @@ public:
             declare_parameter<double>("control_frequency_hz", 1000.0);
         const double velocity_limit_rad_s =
             declare_parameter<double>("velocity_limit_rad_s", 4.0);
+        const double torque_limit_nm = declare_parameter<double>("torque_limit_nm", 2.0);
         requested_position_rad_ =
             declare_parameter<double>("initial_target_position_rad", 1.5707963267948966);
         if (!std::isfinite(control_frequency_hz) || control_frequency_hz < 500.0
             || !std::isfinite(velocity_limit_rad_s) || velocity_limit_rad_s <= 0.0
+            || !std::isfinite(torque_limit_nm) || torque_limit_nm <= 0.0
             || !std::isfinite(requested_position_rad_)) {
             throw std::invalid_argument("angle controller parameters are invalid");
         }
@@ -37,7 +39,17 @@ public:
                 -velocity_limit_rad_s, velocity_limit_rad_s,
                 declare_parameter<double>("position_pid.integral_min", -1.0),
                 declare_parameter<double>("position_pid.integral_max", 1.0)});
+        velocity_pid_ = std::make_unique<PidController>(
+            PidGains{
+                declare_parameter<double>("velocity_pid.kp", 0.35),
+                declare_parameter<double>("velocity_pid.ki", 2.0),
+                declare_parameter<double>("velocity_pid.kd", 0.0005)},
+            PidLimits{
+                -torque_limit_nm, torque_limit_nm,
+                declare_parameter<double>("velocity_pid.integral_min", -10.0),
+                declare_parameter<double>("velocity_pid.integral_max", 10.0)});
 
+        torque_publisher_ = create_publisher<std_msgs::msg::Float64>("torque_cmd", 10);
         target_velocity_publisher_ =
             create_publisher<std_msgs::msg::Float64>("target_velocity", 10);
         planned_position_publisher_ =
@@ -57,6 +69,7 @@ public:
             "velocity", 10, [this](const std_msgs::msg::Float64::SharedPtr message) {
                 if (std::isfinite(message->data)) {
                     current_velocity_rad_s_ = message->data;
+                    velocity_received_ = true;
                 }
             });
         target_subscription_ = create_subscription<std_msgs::msg::Float64>(
@@ -78,7 +91,7 @@ public:
             std::chrono::duration_cast<std::chrono::nanoseconds>(period),
             std::bind(&AnglePidControllerNode::control_step, this));
 
-        RCLCPP_INFO(get_logger(), "Angle outer PID ready: rate=%.1f Hz", control_frequency_hz);
+        RCLCPP_INFO(get_logger(), "Angle PID ready: rate=%.1f Hz", control_frequency_hz);
     }
 
 private:
@@ -105,6 +118,7 @@ private:
         planned_position_rad_ = current_position_rad_ + travel;
         target_pending_ = false;
         position_pid_->reset();
+        velocity_pid_->reset();
         publish_value(planned_position_publisher_, planned_position_rad_);
         RCLCPP_INFO(
             get_logger(), "Angle target: current=%.3f, requested=%.3f, planned=%.3f",
@@ -112,13 +126,16 @@ private:
     }
 
     void control_step() {
-        if (!position_received_ || target_pending_) {
+        if (!position_received_ || !velocity_received_ || target_pending_) {
             return;
         }
         const double target_velocity_rad_s =
             position_pid_->update(planned_position_rad_, current_position_rad_, dt_);
+        const double torque_nm =
+            velocity_pid_->update(target_velocity_rad_s, current_velocity_rad_s_, dt_);
         publish_value(planned_position_publisher_, planned_position_rad_);
         publish_value(target_velocity_publisher_, target_velocity_rad_s);
+        publish_value(torque_publisher_, torque_nm);
     }
 
     double dt_{0.001};
@@ -127,8 +144,11 @@ private:
     double requested_position_rad_{0.0};
     double planned_position_rad_{0.0};
     bool position_received_{false};
+    bool velocity_received_{false};
     bool target_pending_{true};
     std::unique_ptr<PidController> position_pid_;
+    std::unique_ptr<PidController> velocity_pid_;
+    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr torque_publisher_;
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr target_velocity_publisher_;
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr planned_position_publisher_;
     rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr position_subscription_;
